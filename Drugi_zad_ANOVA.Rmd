@@ -1,0 +1,39 @@
+---
+title: "Drugi zadatak - ANOVA"
+author: "Luka"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+student_data <- read.csv('student_data.csv')
+student_data
+```
+
+
+```{r}
+# Testiranje homogenosti varijanci uzoraka
+# Bartlettov test
+
+columns <- c('G1_mat', 'address')
+grades <- student_data[columns]
+
+bartlett_test_result <- bartlett.test(G1_mat ~ address, grades)
+
+print(bartlett_test_result)
+```
+
+```{r}
+table(grades$address, useNA = 'always')
+```
+
+```{r}
+anova_result <- aov(G1_mat ~ address, grades)
+
+summary(anova_result)
+```
+
