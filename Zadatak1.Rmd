@@ -1,0 +1,84 @@
+```{r}
+
+data_frame <- read.csv("student_data.csv", header = TRUE)
+
+male_data <- subset(data_frame, sex == "M")
+
+male_data <- male_data$G3_mat
+  
+  
+female_data <- subset(data_frame, sex == "F")
+female_data <- female_data$G3_mat
+
+```
+
+
+Kako bismo odgovorili na pitaje postoji li razlika u konačnim ocjenama među spolovima prvo moramo odraditi deskriptivnu statistiku.
+
+Za početak napravimo box plotove za ocjene ovih dvaju populacija.
+
+```{r}
+
+boxplot(male_data, female_data, main="Box plot")
+
+
+```
+
+Sa boxplota vidimo da postoji mala razlika u medianima uzoraka. Dodatno zanimljivo je uočiti da za obje populacije boxplot je skoro jednak samo je jedna od populacija translatirana. To nas navodi na hipotezu da su distribucije ovih populacija iste smo ne poravnate.
+
+Pogledajmo jesu li podatci normalni. Za početak pogledajmo histograme.
+
+```{r}
+par(mfrow=c(1,2))
+
+hist(male_data)
+
+hist(female_data)
+par(mfrow=c(1,1))
+
+```
+
+S histograma je jasno da podatci nisu normalni stoga na njih u ovakvom obliku nećemo moći primjeniti parametarske testove koji pretpostavljaju normalnost populacije.
+
+To potvrđuju i Q-Q plotovi ovih uzoraka. 
+
+```{r}
+par(mfrow=c(1,2))
+
+qqplot(male_data,rnorm(male_data), main="Q-Q plot podataka za mušku populaciju")
+qqline(rnorm(male_data), col="red", lwd=2)
+
+qqplot(female_data,rnorm(female_data), main="Q-Q plot podataka za žensku populaciju")
+qqline(rnorm(female_data), col="red", lwd=2)
+
+par(mfrow=c(1,1))
+
+
+```
+
+Q-Q plotovi definitivno potvrđuju da podatci nijednog od uzoraka nisu normalni.
+
+S obzirom da podatci nisu normalni, prvo ćemo se poslužiti nekim neparametarskim postupkom. Nakon toga pokušati ćemo izmijeniti uzorke (izbacivanjem ekstrema) i pokušati primjeniti neki parametarski postupak. Idealno bi bilo koristiti Kolmogorov-Smirnovljev test, međutim zbog diskretnosti podataka on nije prikladan, iako bi on izravno dao odgovor na postavljeno pitanje. Umjesto toga upotrijebit Mann-Whitney U test koji će nam reći postoji li statistički zančajna razlika u medijanima dviju distribucija sličnog oblika. Budući da iz histograma vidimo da su distribucije sličnog oblika on U test je ovdje prikladan. Dodatno normalizacijom podataka možemo vidjeti da su histogrami sličniji ako standardiziramo podatke, što će smanjiti vjerojatnost pogreške
+
+``` {r}
+par(mfrow=c(1,2))
+hist(scale(male_data))
+hist(scale(female_data))
+par(mfrow=c(1,1))
+```
+
+Konačno provedimo test
+
+```{r}
+wilcox.test(scale(male_data), scale(female_data))
+```
+
+Iz p vrijednosti 0.406 možemo zaključiti da ne postoji statistički značajna razlika u završnim ocjenama iz matematike između splova. Zanimljivo je međutim uočiti da U test nad ne standardiziranim podatcima daje drugačije rezultate.
+
+```{r}
+wilcox.test(male_data, female_data)
+```
+
+S ovom novom p vrijednosti zaključili bismo da postoji značaja razlika u ocjenama. No budući da je oblik distribucije sličniji za normalizirane podatke to je rezultat kojeg odabiremo.
+
+
