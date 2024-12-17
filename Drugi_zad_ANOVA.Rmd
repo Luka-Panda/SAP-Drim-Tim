@@ -1,35 +1,109 @@
 ---
-title: "Drugi zadatak - ANOVA"
-author: "Luka"
+title: "Drugi zadatak"
+author: "Drim Tim"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+# Pregled podataka
+
 ```{r}
 student_data <- read.csv('student_data.csv')
-student_data
+head(student_data)
 ```
 
+```{r}
+columns <- c('G1_mat', 'address')
+grades <- student_data[columns]
+```
+
+# Vizualizacija
+
+Box plot prve ocjene iz matematike s obzirom na mjesto stanovanja.
+
+```{r}
+grades$address <- factor(grades$address)
+
+plot(G1_mat ~ address, grades)
+```
+
+Uz pomoć našeg box plot-a možemo očekivati da neće biti razlike u prvoj ocjeni iz matematike s obzirom na mjesto stanovanja. No kako bismo to statistički zaključili, provodimo dva različita testa, hi-kvadrat test nezavisnosti/homogenosti podataka, te ANOVA-u.
+
+# hi-kvadrat test nezavisnosti/homogenosti podataka
+
+Kako bismo mogli primjeniti hi-kvadrat test nezavisnosti/homogenosti podataka, sve očekivane frekvencije moraju imati vrijednost veću ili jednaku 5. Iz tog razloga prvo provjeravamo broj očekivanih vrijednosti manjih od 5. Ako jedna ili više takvih vrijednosti postoji, ne možemo primjeniti ovaj test, te moramo razmatrati alternativu.
+
+```{r}
+group <- grades$address
+g1_mat <- grades$G1_mat
+
+contingency_table <- table(group, g1_mat)
+
+N <- length(group)
+num <- table(group)
+num_R <- num['R']
+num_U <- num['U']
+
+counter <- 0
+
+for (i in 1:ncol(contingency_table)) {
+  value <- 0
+  for (j in 1:nrow(contingency_table)) {
+    value <- value + contingency_table[j, i]
+  }
+  
+  expected_R <- N * (value / N) * (num_R / N)
+  expected_U <- N * (value / N) * (num_U / N)
+  
+  if (expected_R < 5) {
+    counter <- counter + 1
+  }
+  
+  if (expected_U < 5) {
+    counter <- counter + 1
+  }
+}
+
+print(paste("Postoji ", counter, " očekivanih vrijednosti s vrijednošću manjom od 5, te ne možemo provesti hi-kvadrat test homogenosti/nezavisnosti podataka"))
+```
+
+# ANOVA
+
+Prvi korak prije samog provođenja ANOVA-e je provođenje Bartlett-ovog testa nad podacima kako bismo testirali homogenost varijanci uzoraka.
+
+Želimo testirati:  
+ H0: sve su varijance jednake  
+ H1: barem dvije varijance se razlikuju  
+ alpha = 0.05  
 
 ```{r}
 # Testiranje homogenosti varijanci uzoraka
 # Bartlettov test
-
-columns <- c('G1_mat', 'address')
-grades <- student_data[columns]
 
 bartlett_test_result <- bartlett.test(G1_mat ~ address, grades)
 
 print(bartlett_test_result)
 ```
 
+Dobivši p-vrijednost 0.7016, tj. značajno veću vrijednost od pretpostavljenje razine značajnosti (0.05), možemo zaključiti da su varijance jednake te da nad ovim podacima možemo provesti ANOVA-u.
+
+Prije same ANOVA-e također promatramo koliko različitih uzoraka imamo za svaku kategoriju (U - urban te R - rural). 
+
 ```{r}
 table(grades$address, useNA = 'always')
 ```
+
+Želimo testirati:  
+ H0: sve su srednje vrijednosti jednake  
+ H1: barem dvije srednje vrijednosti se razlikuju  
+ alpha = 0.05  
+
 
 ```{r}
 anova_result <- aov(G1_mat ~ address, grades)
@@ -37,3 +111,4 @@ anova_result <- aov(G1_mat ~ address, grades)
 summary(anova_result)
 ```
 
+p-vrijednost našeg ANOVA testa je zadana kao Pr(>F), te iznosi 0.186 > 0.05, te iz tog razloga ne možemo odbaciti nultu hipotezu. Koristeći ANOVA test, statistički zaključujemo da prva ocjena iz matematike ne ovisi o mjestu stanovanja. 
