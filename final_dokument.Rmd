@@ -1,9 +1,11 @@
 ---
 title: "Analiza uspjeha učenika"
-subtitle: "SAP - projekt"
 author: "'Drim Tim' - Danijel Kovačević, Luka Panđa, Martin Ante Rogošić, Marko Sršić"
 date: "1.1.2025."
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
+subtitle: "SAP - projekt"
 ---
 
 # 1. Uvod
@@ -26,7 +28,7 @@ library(dplyr)
 Podaci koji će nam poslužiti za statističku analizu uspjeha učenika prikupljeni su školske godine 2005/2006. u dvije portugalske srednje škole - "Gabriel Pereira" (GP) i "Mousinho da Silveira" (MS). Upoznajmo se sa značajkama podatkovnog skupa.
 
 ```{r}
-df = read_csv("student_data.csv")
+df = read.csv("student_data.csv")
 head(df)
 ```
 
@@ -62,31 +64,211 @@ Zato ćemo za te numeričke značajke pogledati zastupljenost pojedinih kategori
 ```{r}
 # prije provjere zastupljenosti potrebno je faktorizirati kategorijske značajke
 
-df_factor <- lapply(df, function(x) {
-  if (is.character(x) || is.factor(x)) {
-    as.factor(x)
-  } else {
-    x
-  }
-})
+#df_factor <- lapply(df, function(x) {
+#  if (is.character(x) || is.factor(x)) {
+#    as.factor(x)
+#  } else {
+#    x
+#  }
+#})
 
-table(df_factor)
+#table(df_factor)
 ```
 
 ```{r}
-help(table)
+#help(table)
 ```
-
-```{r}
-
-```
-
 
 # 3. Istraživačka pitanja
 
 ### 3.1. Jesu li prosječne ocjene iz matematike različite između spolova?
 
+```{r}
+
+data_frame <- read.csv("student_data.csv", header = TRUE)
+
+male_data <- subset(data_frame, sex == "M")
+
+male_data <- male_data$G3_mat
+  
+  
+female_data <- subset(data_frame, sex == "F")
+female_data <- female_data$G3_mat
+
+```
+
+
+Kako bismo odgovorili na pitaje postoji li razlika u konačnim ocjenama među spolovima prvo moramo odraditi deskriptivnu statistiku.
+
+Za početak napravimo box plotove za ocjene ovih dvaju populacija.
+
+```{r}
+
+boxplot(male_data, female_data, main="Box plot")
+
+
+```
+
+Sa boxplota vidimo da postoji mala razlika u medianima uzoraka. Dodatno zanimljivo je uočiti da za obje populacije boxplot je skoro jednak samo je jedna od populacija translatirana. To nas navodi na hipotezu da su distribucije ovih populacija iste smo ne poravnate.
+
+Pogledajmo jesu li podatci normalni. Za početak pogledajmo histograme.
+
+```{r}
+par(mfrow=c(1,2))
+
+hist(male_data)
+
+hist(female_data)
+par(mfrow=c(1,1))
+
+```
+
+S histograma je jasno da podatci nisu normalni stoga na njih u ovakvom obliku nećemo moći primjeniti parametarske testove koji pretpostavljaju normalnost populacije.
+
+To potvrđuju i Q-Q plotovi ovih uzoraka. 
+
+```{r}
+par(mfrow=c(1,2))
+
+qqplot(male_data,rnorm(male_data), main="Q-Q plot podataka za mušku populaciju")
+qqline(rnorm(male_data), col="red", lwd=2)
+
+qqplot(female_data,rnorm(female_data), main="Q-Q plot podataka za žensku populaciju")
+qqline(rnorm(female_data), col="red", lwd=2)
+
+par(mfrow=c(1,1))
+
+
+```
+
+Q-Q plotovi definitivno potvrđuju da podatci nijednog od uzoraka nisu normalni.
+
+S obzirom da podatci nisu normalni, prvo ćemo se poslužiti nekim neparametarskim postupkom. Nakon toga pokušati ćemo izmijeniti uzorke (izbacivanjem ekstrema) i pokušati primjeniti neki parametarski postupak. Idealno bi bilo koristiti Kolmogorov-Smirnovljev test, međutim zbog diskretnosti podataka on nije prikladan, iako bi on izravno dao odgovor na postavljeno pitanje. Umjesto toga upotrijebit Mann-Whitney U test koji će nam reći postoji li statistički zančajna razlika u medijanima dviju distribucija sličnog oblika. Budući da iz histograma vidimo da su distribucije sličnog oblika on U test je ovdje prikladan. Dodatno normalizacijom podataka možemo vidjeti da su histogrami sličniji ako standardiziramo podatke, što će smanjiti vjerojatnost pogreške
+
+``` {r}
+par(mfrow=c(1,2))
+hist(scale(male_data))
+hist(scale(female_data))
+par(mfrow=c(1,1))
+```
+
+Konačno provedimo test
+
+```{r}
+wilcox.test(scale(male_data), scale(female_data))
+```
+
+Iz p vrijednosti 0.406 možemo zaključiti da ne postoji statistički značajna razlika u završnim ocjenama iz matematike između splova. Zanimljivo je međutim uočiti da U test nad ne standardiziranim podatcima daje drugačije rezultate.
+
+```{r}
+wilcox.test(male_data, female_data)
+```
+
+S ovom novom p vrijednosti zaključili bismo da postoji značaja razlika u ocjenama. No budući da je oblik distribucije sličniji za normalizirane podatke to je rezultat kojeg odabiremo.
+
 ### 3.2. Postoji li razlika u prvoj ocjeni iz matematike s obzirom na mjesto stanovanja?
+
+# Pregled podataka
+
+```{r}
+student_data <- read.csv('student_data.csv')
+head(student_data)
+```
+
+```{r}
+columns <- c('G1_mat', 'address')
+grades <- student_data[columns]
+```
+
+# Vizualizacija
+
+Box plot prve ocjene iz matematike s obzirom na mjesto stanovanja.
+
+```{r}
+grades$address <- factor(grades$address)
+
+plot(G1_mat ~ address, grades)
+```
+
+Uz pomoć našeg box plot-a možemo očekivati da neće biti razlike u prvoj ocjeni iz matematike s obzirom na mjesto stanovanja. No kako bismo to statistički zaključili, provodimo dva različita testa, hi-kvadrat test nezavisnosti/homogenosti podataka, te ANOVA-u.
+
+# hi-kvadrat test nezavisnosti/homogenosti podataka
+
+Kako bismo mogli primjeniti hi-kvadrat test nezavisnosti/homogenosti podataka, sve očekivane frekvencije moraju imati vrijednost veću ili jednaku 5. Iz tog razloga prvo provjeravamo broj očekivanih vrijednosti manjih od 5. Ako jedna ili više takvih vrijednosti postoji, ne možemo primjeniti ovaj test, te moramo razmatrati alternativu.
+
+```{r}
+group <- grades$address
+g1_mat <- grades$G1_mat
+
+contingency_table <- table(group, g1_mat)
+
+N <- length(group)
+num <- table(group)
+num_R <- num['R']
+num_U <- num['U']
+
+counter <- 0
+
+for (i in 1:ncol(contingency_table)) {
+  value <- 0
+  for (j in 1:nrow(contingency_table)) {
+    value <- value + contingency_table[j, i]
+  }
+  
+  expected_R <- N * (value / N) * (num_R / N)
+  expected_U <- N * (value / N) * (num_U / N)
+  
+  if (expected_R < 5) {
+    counter <- counter + 1
+  }
+  
+  if (expected_U < 5) {
+    counter <- counter + 1
+  }
+}
+
+print(paste("Postoji ", counter, " očekivanih vrijednosti s vrijednošću manjom od 5, te ne možemo provesti hi-kvadrat test homogenosti/nezavisnosti podataka"))
+```
+
+# ANOVA
+
+Prvi korak prije samog provođenja ANOVA-e je provođenje Bartlett-ovog testa nad podacima kako bismo testirali homogenost varijanci uzoraka.
+
+Želimo testirati:  
+ H0: sve su varijance jednake  
+ H1: barem dvije varijance se razlikuju  
+ alpha = 0.05  
+
+```{r}
+# Testiranje homogenosti varijanci uzoraka
+# Bartlettov test
+
+bartlett_test_result <- bartlett.test(G1_mat ~ address, grades)
+
+print(bartlett_test_result)
+```
+
+Dobivši p-vrijednost 0.7016, tj. značajno veću vrijednost od pretpostavljenje razine značajnosti (0.05), možemo zaključiti da su varijance jednake te da nad ovim podacima možemo provesti ANOVA-u.
+
+Prije same ANOVA-e također promatramo koliko različitih uzoraka imamo za svaku kategoriju (U - urban te R - rural). 
+
+```{r}
+table(grades$address, useNA = 'always')
+```
+
+Želimo testirati:  
+ H0: sve su srednje vrijednosti jednake  
+ H1: barem dvije srednje vrijednosti se razlikuju  
+ alpha = 0.05  
+
+
+```{r}
+anova_result <- aov(G1_mat ~ address, grades)
+
+summary(anova_result)
+```
+
+p-vrijednost našeg ANOVA testa je zadana kao Pr(>F), te iznosi 0.186 > 0.05, te iz tog razloga ne možemo odbaciti nultu hipotezu. Koristeći ANOVA test, statistički zaključujemo da prva ocjena iz matematike ne ovisi o mjestu stanovanja. 
 
 ### 3.3. Možemo li predvidjeti prolaz iz završnog ispita iz jezika na temelju sociodemografskih varijabli poput spola, obrazovanja roditelja i veličine obitelji?
 
