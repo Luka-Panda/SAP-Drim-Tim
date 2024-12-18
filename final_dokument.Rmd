@@ -1,0 +1,45 @@
+---
+title: "Analiza uspjeha učenika"
+subtitle: "SAP - projekt"
+author: "'Drim Tim' - Danijel Kovačević, Luka Panđa, Martin Ante Rogošić, Marko Sršić"
+date: "1.1.2025."
+output: pdf_document
+---
+
+# 1. Uvod
+
+Utjecaj različitih čimbenika na školski uspjeh učenika je oduvijek bila jedna od najzanimljivijih tema za istraživače iz raznih područja; kako je pohađanje škole i polaganje ispita sastavni dio života većine ljudi u današnjem modernom dobu, interes za dublje razumijevanje individualnih, sociodemografskih i društvenih karakteristika koje oblikuju akademska postignuća učenika/studenata neprestano raste. Takva istraživanja mogu pridonijeti stvaranju pravednijeg i učinkovitijeg obrazovnog sustava koji može bolje odgovoriti na potrebe različitih skupina učenika.
+
+U sklopu projekta na kolegiju "Statistička analiza podataka", grupa "Drim Tim" pokušat će na temelju podataka o različitim značajkama za više od 350 učenika iz dviju portugalskih srednjih škola odgovoriti na neka zanimljiva istraživačka pitanja koja će čitatelju približiti odnos i utjecaj tih značajki na ispitni uspjeh iz matematike i portugalskog jezika. 
+
+Analiza obuhvaća korištenje različitih statističkih metoda i tehnika te je zbog toga podijeljena u dva poglavlja. 
+U 2. poglavlju se postupcima deskriptivne statistike nastoji dobiti bolji uvid u korišteni podatkovni skup i otkriti eventualne nedostajuće ili stršeće podatke. U tu svrhu će se provjeriti priroda značajki (jesu li kategorijske ili numeričke), izračunati mjere centralne tendencije i mjere rasipanja te napraviti vizualizacija za neke ključne varijable.
+U 3. poglavlju su postavljena određena istraživačka pitanja od interesa, poput "razlika u ocjeni iz matematike s obzirom na mjesto stanovanja" ili "predviđanje uspjeha na završnom ispitu iz jezika na temelju sociodemografskih varijabli". Korištenjem deskriptora poput srednje vrijednosti ili varijance i vizualizacijom postavlja se početna hipoteza čija se ispravnost provjerava provedbom odgovarajućeg statističkog testa. Na temelju rezultata tog statističkog testa možemo (ili ne možemo) donijeti zaključak o hipotezi koju smo postavili.  
+Posljednje, 4. poglavlje donosi sažetak analize i najvažnije/najzanimljivije zaključke. 
+
+
+# 2. Deskriptivna analiza ulaznog skupa podataka
+
+```{r}
+
+```
+
+# 3. Istraživačka pitanja
+
+### 3.1. Jesu li prosječne ocjene iz matematike različite između spolova?
+
+### 3.2. Postoji li razlika u prvoj ocjeni iz matematike s obzirom na mjesto stanovanja?
+
+### 3.3. Možemo li predvidjeti prolaz iz završnog ispita iz jezika na temelju sociodemografskih varijabli poput spola, obrazovanja roditelja i veličine obitelji?
+
+### 3.4. Postoji li razlika u broju izostanaka iz matematike između učenika koji dolaze iz manjih i većih obitelji?
+
+### 3.5. Postoji li razlika u \_\_\_\_ iz \_\_\_\_ s obzirom na "problematične" varijable (izostanci, alkohol, izlasci, romantic partner)
+
+### 3.6. Može li se ambicijom i novcem do boljih rezultata (dodatne plaćene instrukcije, želi dodatno više obrazovanje, school/family support ...)
+
+### Upareni test?
+
+### Predviđanje?
+
+# 4. Zaključak
