@@ -3,6 +3,7 @@ title: "Analiza uspjeha učenika"
 author: "'Drim Tim' - Danijel Kovačević, Luka Panđa, Martin Ante Rogošić, Marko Sršić"
 date: "1.1.2025."
 output:
+  pdf_document: default
   html_document:
     df_print: paged
 subtitle: "SAP - projekt"
@@ -14,7 +15,10 @@ Utjecaj različitih čimbenika na školski uspjeh učenika je oduvijek bila jedn
 
 U sklopu projekta na kolegiju "Statistička analiza podataka", grupa "Drim Tim" pokušat će na temelju podataka o različitim značajkama za više od 350 učenika iz dviju portugalskih srednjih škola odgovoriti na neka zanimljiva istraživačka pitanja koja će čitatelju približiti odnos i utjecaj tih značajki na ispitni uspjeh iz matematike i portugalskog jezika.
 
-Analiza obuhvaća korištenje različitih statističkih metoda i tehnika te je zbog toga podijeljena u dva poglavlja. U 2. poglavlju se postupcima deskriptivne statistike nastoji dobiti bolji uvid u korišteni podatkovni skup i otkriti eventualne nedostajuće ili stršeće podatke. U tu svrhu će se provjeriti priroda značajki (jesu li kategorijske ili numeričke), izračunati mjere centralne tendencije i mjere rasipanja te napraviti vizualizacija za neke ključne varijable. U 3. poglavlju su postavljena određena istraživačka pitanja od interesa, poput "razlika u ocjeni iz matematike s obzirom na mjesto stanovanja" ili "predviđanje uspjeha na završnom ispitu iz jezika na temelju sociodemografskih varijabli". Korištenjem deskriptora poput srednje vrijednosti ili varijance i vizualizacijom postavlja se početna hipoteza čija se ispravnost provjerava provedbom odgovarajućeg statističkog testa. Na temelju rezultata tog statističkog testa možemo (ili ne možemo) donijeti zaključak o hipotezi koju smo postavili.\
+Analiza obuhvaća korištenje različitih statističkih metoda i tehnika te je zbog toga podijeljena u nekoliko poglavlja. 
+
+U 2. poglavlju se postupcima deskriptivne statistike nastoji dobiti bolji uvid u korišteni podatkovni skup. U tu svrhu će se provjeriti priroda značajki (jesu li kategorijske ili numeričke) i izračunati sažetak 5 brojeva (minimum, maksimum, Q1, medijan, Q3) te srednja vrijednost. 
+U 3. poglavlju su postavljena određena istraživačka pitanja od interesa, poput "razlika u ocjeni iz matematike s obzirom na mjesto stanovanja" ili "predviđanje uspjeha na završnom ispitu iz jezika na temelju sociodemografskih varijabli". Korištenjem deskriptora poput srednje vrijednosti ili varijance i vizualizacijom postavlja se početna hipoteza čija se ispravnost provjerava provedbom odgovarajućeg statističkog testa. Na temelju rezultata tog statističkog testa možemo (ili ne možemo) donijeti zaključak o hipotezi koju smo postavili.\
 Posljednje, 4. poglavlje donosi sažetak analize i najvažnije/najzanimljivije zaključke.
 
 # 2. Deskriptivna analiza ulaznog skupa podataka
@@ -24,60 +28,91 @@ Posljednje, 4. poglavlje donosi sažetak analize i najvažnije/najzanimljivije z
 library(dplyr)
 ```
 
-
 Podaci koji će nam poslužiti za statističku analizu uspjeha učenika prikupljeni su školske godine 2005/2006. u dvije portugalske srednje škole - "Gabriel Pereira" (GP) i "Mousinho da Silveira" (MS). Upoznajmo se sa značajkama podatkovnog skupa.
 
 ```{r}
-df = read.csv("student_data.csv")
+df <- read.csv("student_data.csv")
 head(df)
 ```
 
 ```{r}
 dim(df)
 ```
+
 Imamo podatke o 370 učenika i 39 značajki koje ih opisuju. Te značajke su:
 
 ```{r}
 names(df)
 ```
-Vidimo da uz osnovne značajke poput škole, spola i godina imamo niz sociodemografskih značajki (veličina obitelji, obrazovanje roditelja, zanimanje roditelja, adresa...), obrazovnih značajki (tjedno vrijeme učenja, dodatne plaćene instrukcije...), društvenih značajki (izlasci, konzumacija alkohola...) te značajke koje opisuju uspjeh učenika na ispitima iz matematike i jezika. 
 
-(Varijable i njihovo značenje -> navesti sve posebno i odrediti tip?)
+Vidimo da uz osnovne značajke poput škole, spola i godina imamo niz sociodemografskih značajki (veličina obitelji, obrazovanje roditelja, zanimanje roditelja, adresa...), obrazovnih značajki (tjedno vrijeme učenja, dodatne plaćene instrukcije...), društvenih značajki (izlasci, konzumacija alkohola...) te značajke koje opisuju uspjeh učenika na ispitima iz matematike i jezika. Značajke su kategorijskog i numeričkog tipa.
 
-*   *school* - (B) učenikova škola ('GP' ili 'MS')
-*   *sex* - (B) spol ('M' - muški, 'F' - ženski)
-....(?)
+U ovom dijelu radimo samo početni pregled podataka za neke odabrane značajke. Nećemo svaku značajku opisivati zasebno; ako značajka bude korištena u analizi u nekom statističkom testu, tada ćemo navesti opis te značajke kao i potrebnu deskriptivnu statistiku u sklopu samog testa.
 
-
-Funkcijom *summary* za numeričke podatke možemo dobiti sažetak 5 brojeva (min, max, Q1, medijan, Q3) i srednju vrijednost:
+Funkcijom *summary* za 'prave' numeričke podatke možemo dobiti sažetak 5 brojeva i srednju vrijednost:
 
 ```{r}
-summary(df[sapply(df, is.numeric)])
+true_numeric <- c('age','absences_mat', 'absences_por', 
+                  'G1_mat','G2_mat','G3_mat','G1_por','G2_por','G3_por')
+summary(df[true_numeric])
 ```
-Ovo je korisno za značajke poput *age*, *absences* i *G1*-*G3*; primjerice za značajku *age* vidimo da je raspon godina učenika [15, 22], medijan 17 godina i srednja vrijednost 16.58 godina. Ipak, ovo nije previše korisno za značajke koje su po strukturi numeričke (jer su njihove vrijednosti reprezentirane brojevima), ali su po prirodi kategorijske (npr. *Medu* poprima vrijednosti od 0 do 4 koje reprezentiraju ordinalnu skalu različitih razina obrazovanja). Podaci su ovako enkodirani kako bi se olakšalo njihovo korištenje s algoritmima strojnog učenja.
+
+Za značajku *age* vidimo da je raspon godina učenika [15, 22], medijan 17 godina i srednja vrijednost 16.58 godina. Najviše izostanaka imao je jedan učenik na matematici (75), a medijan i srednja vrijednost rezultata učenika veći su od 10 bodova na svim ispitima iz matematike i jezika.
+
+Koristeći IQR (Q3-Q1) možemo provjeriti potencijalne stršeće podatke. To su oni podaci koji su ili manji od 1.5IQR - Q1 ili veći od 1.5IQR + Q3. Stršeći podaci mogu se pojaviti kod značajki koje nisu ograničene, a to su *absences_mat* i *absences_por*.
+
+```{r}
+absences <- c('absences_mat', 'absences_por')
+
+find_outliers <- function(column) {
+  Q1 <- quantile(column, 0.25, na.rm = TRUE)
+  Q3 <- quantile(column, 0.75, na.rm = TRUE)
+  IQR_value <- IQR(column, na.rm = TRUE)
+  
+  # Donja i gornja granica za outliere
+  lower_bound <- Q1 - 1.5 * IQR_value
+  upper_bound <- Q3 + 1.5 * IQR_value
+  
+  # Vraćanje indeksa outliera
+  outliers <- which(column < lower_bound | column > upper_bound)
+  return(outliers)
+}
+
+outliers_list <- lapply(df[absences], find_outliers)
+
+print('Potencijalni stršeći podaci - izostanci iz matematike:')
+print(df$absences_mat[outliers_list$absences_mat])
+print('Potencijalni stršeći podaci - izostanci iz jezika:')
+print(df$absences_por[outliers_list$absences_por])
+```
+Jedini podatak koji jako odudara je onaj za učenika koji je imao 75 izostanaka na matematici, ali ni on nije toliko nezamislivo velik. Zasad nećemo ove potencijalne stršeće podatke izbacivati.
+
+Sažetak 5 brojeva i srednju vrijednost nije previše korisno provjeriti za značajke koje su po strukturi numeričke, ali su po prirodi kategorijske (npr. *Medu* poprima vrijednosti od 0 do 4 koje reprezentiraju ordinalnu skalu različitih razina obrazovanja). Podaci su ovako enkodirani kako bi se olakšalo njihovo korištenje s algoritmima strojnog učenja.
 
 Zato ćemo za te numeričke značajke pogledati zastupljenost pojedinih kategorija, zajedno uz kategorijske značajke (za koje nismo mogli dobiti gornji sažetak):
 
-# TO-DO
-
-
-```{r}
+```{r, echo=TRUE, results='hide'}
 # prije provjere zastupljenosti potrebno je faktorizirati kategorijske značajke
+df %>% select(-all_of(true_numeric)) -> df_no_numeric
 
-#df_factor <- lapply(df, function(x) {
-#  if (is.character(x) || is.factor(x)) {
-#    as.factor(x)
-#  } else {
-#    x
-#  }
-#})
+# Kreiranje tablice za prikaz
+results <- sapply(names(df_no_numeric), function(n) {
+  tab <- table(df[[n]])
+  percent <- round(prop.table(tab)*100,2)
+  paste0(names(tab), " -- ", tab, " (", percent, "%)",  collapse = " | ")
+})
 
-#table(df_factor)
+# Prikaz rezultata kao tablice
+data.frame(Stupac = names(results), Vrijednosti = results, row.names = NULL)
+
+# Output skriven iz PDF-a radi preglednosti
 ```
 
-```{r}
-#help(table)
-```
+Iz ovih podataka vidimo da prevladavaju učenici iz škole GP (331 naspram 39), raspodjela po spolovima je podjednaka, prevladavaju učenici iz urbanog područja i iz obitelji s više od 3 člana. Što se tiče nekih zanimljivijih značajki, iz podataka vidimo da većina učenika tjedno uči između 2 i 5 sati (*studytime* - 50%), većina mora putovati manje od 15 minuta do škole (*traveltime* - 65.41%), omjer učenika koji uzimaju instrukcije iz matematike i onih koji ne uzimaju instrukcije je podjednak (*paid_mat*), dok samo 6.76% učenika uzima instrukcije iz jezika (*paid_por*). Postotak učenika koji nemaju podršku obitelji u njihovom obrazovanju je 37.57% (*famsup*). Što se tiče konzumacije alkohola, radnim danima je očekivano niska (*Dalc* - gotovo 70% ne konzumira ili konzumira vrlo malo), a vikendom je povećana (*Walc*).
+
+Prije obavljanja bilo kakve analize i provođenja statističkih testova nužno je očistiti i transformirati skup podataka s kojim se radi, ako je to potrebno. Ovdje je prvenstveno fokus na nedostajuće podatke te na stršeće podatke. Skup podataka koji proučavamo u sklopu projekta nema nedostajućih podataka (za svih 370 učenika imamo informacije o svih 39 značajki), a stršeće podatke smo provjerili za značajke *absences_mat* i *absences_por* i pronašli smo jedan podatak koji će se izuzeti iz analize ako to bude potrenbo (učenik sa 75 izostanaka na matematici).
+
+Dio deskriptivne statistike je i vizualizacija podataka - ona je odličan način za dobivanje uvida u prirodu podataka i može pomoći naslutiti na odgovor za neka ključna pitanja: "koji je oblik distribucije podataka?", "koje su središnje tendencije?", "koji su rasponi i varijabilnost podataka?", "postoje li stršeće vrijednosti?", itd. U ovom dijelu detaljnu vizualizaciju ispuštamo. Vizualizacija korištenih značajki bit će napravljena u uvodu svakog statističkog testa.
 
 # 3. Istraživačka pitanja
 
@@ -96,7 +131,6 @@ female_data <- subset(data_frame, sex == "F")
 female_data <- female_data$G3_mat
 
 ```
-
 
 Kako bismo odgovorili na pitaje postoji li razlika u konačnim ocjenama među spolovima prvo moramo odraditi deskriptivnu statistiku.
 
@@ -125,7 +159,7 @@ par(mfrow=c(1,1))
 
 S histograma je jasno da podatci nisu normalni stoga na njih u ovakvom obliku nećemo moći primjeniti parametarske testove koji pretpostavljaju normalnost populacije.
 
-To potvrđuju i Q-Q plotovi ovih uzoraka. 
+To potvrđuju i Q-Q plotovi ovih uzoraka.
 
 ```{r}
 par(mfrow=c(1,2))
@@ -145,7 +179,7 @@ Q-Q plotovi definitivno potvrđuju da podatci nijednog od uzoraka nisu normalni.
 
 S obzirom da podatci nisu normalni, prvo ćemo se poslužiti nekim neparametarskim postupkom. Nakon toga pokušati ćemo izmijeniti uzorke (izbacivanjem ekstrema) i pokušati primjeniti neki parametarski postupak. Idealno bi bilo koristiti Kolmogorov-Smirnovljev test, međutim zbog diskretnosti podataka on nije prikladan, iako bi on izravno dao odgovor na postavljeno pitanje. Umjesto toga upotrijebit Mann-Whitney U test koji će nam reći postoji li statistički zančajna razlika u medijanima dviju distribucija sličnog oblika. Budući da iz histograma vidimo da su distribucije sličnog oblika on U test je ovdje prikladan. Dodatno normalizacijom podataka možemo vidjeti da su histogrami sličniji ako standardiziramo podatke, što će smanjiti vjerojatnost pogreške
 
-``` {r}
+```{r}
 par(mfrow=c(1,2))
 hist(scale(male_data))
 hist(scale(female_data))
@@ -234,10 +268,10 @@ print(paste("Postoji ", counter, " očekivanih vrijednosti s vrijednošću manjo
 
 Prvi korak prije samog provođenja ANOVA-e je provođenje Bartlett-ovog testa nad podacima kako bismo testirali homogenost varijanci uzoraka.
 
-Želimo testirati:  
- H0: sve su varijance jednake  
- H1: barem dvije varijance se razlikuju  
- alpha = 0.05  
+Želimo testirati:\
+H0: sve su varijance jednake\
+H1: barem dvije varijance se razlikuju\
+alpha = 0.05
 
 ```{r}
 # Testiranje homogenosti varijanci uzoraka
@@ -250,17 +284,16 @@ print(bartlett_test_result)
 
 Dobivši p-vrijednost 0.7016, tj. značajno veću vrijednost od pretpostavljenje razine značajnosti (0.05), možemo zaključiti da su varijance jednake te da nad ovim podacima možemo provesti ANOVA-u.
 
-Prije same ANOVA-e također promatramo koliko različitih uzoraka imamo za svaku kategoriju (U - urban te R - rural). 
+Prije same ANOVA-e također promatramo koliko različitih uzoraka imamo za svaku kategoriju (U - urban te R - rural).
 
 ```{r}
 table(grades$address, useNA = 'always')
 ```
 
-Želimo testirati:  
- H0: sve su srednje vrijednosti jednake  
- H1: barem dvije srednje vrijednosti se razlikuju  
- alpha = 0.05  
-
+Želimo testirati:\
+H0: sve su srednje vrijednosti jednake\
+H1: barem dvije srednje vrijednosti se razlikuju\
+alpha = 0.05
 
 ```{r}
 anova_result <- aov(G1_mat ~ address, grades)
@@ -268,18 +301,14 @@ anova_result <- aov(G1_mat ~ address, grades)
 summary(anova_result)
 ```
 
-p-vrijednost našeg ANOVA testa je zadana kao Pr(>F), te iznosi 0.186 > 0.05, te iz tog razloga ne možemo odbaciti nultu hipotezu. Koristeći ANOVA test, statistički zaključujemo da prva ocjena iz matematike ne ovisi o mjestu stanovanja. 
+p-vrijednost našeg ANOVA testa je zadana kao Pr(\>F), te iznosi 0.186 \> 0.05, te iz tog razloga ne možemo odbaciti nultu hipotezu. Koristeći ANOVA test, statistički zaključujemo da prva ocjena iz matematike ne ovisi o mjestu stanovanja.
 
 ### 3.3. Možemo li predvidjeti prolaz iz završnog ispita iz jezika na temelju sociodemografskih varijabli poput spola, obrazovanja roditelja i veličine obitelji?
 
 ### 3.4. Postoji li razlika u broju izostanaka iz matematike između učenika koji dolaze iz manjih i većih obitelji?
 
-### 3.5. Postoji li razlika u \_\_\_\_ iz \_\_\_\_ s obzirom na "problematične" varijable (izostanci, alkohol, izlasci, romantic partner)
+### 3.5. ...
 
-### 3.6. Može li se ambicijom i novcem do boljih rezultata (dodatne plaćene instrukcije, želi dodatno više obrazovanje, school/family support ...)
-
-### Upareni test?
-
-### Predviđanje?
+### 3.6. ...
 
 # 4. Zaključak
