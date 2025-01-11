@@ -24,61 +24,63 @@ boxplot(male_data, female_data, main="Box plot")
 
 ```
 
-Sa boxplota vidimo da postoji mala razlika u medianima uzoraka. Dodatno zanimljivo je uočiti da za obje populacije boxplot je skoro jednak samo je jedna od populacija translatirana. To nas navodi na hipotezu da su distribucije ovih populacija iste smo ne poravnate.
-
-Pogledajmo jesu li podatci normalni. Za početak pogledajmo histograme.
+Sa boxplota vidimo da postoji mala razlika u medianima uzoraka. Dodatno zanimljivo je uočiti da za obje populacije boxplot je skoro jednak samo je jedna od populacija translatirana. Dodtano vidimo da postoje outlieri, sukladno tome eliminirajmo outliere obje populacije, te pogledajmo histograme populacija.
 
 ```{r}
-par(mfrow=c(1,2))
+male_Q1 <- quantile(male_data, 0.25)
+male_Q3 <- quantile(male_data, 0.75)
+male_IRQ <- male_Q3 - male_Q1
+male_lower_bound <- male_Q1 - 1.5*male_IRQ
+male_upper_bound <- male_Q3 + 1.5*male_IRQ
+
+male_data <- male_data[male_data >= male_lower_bound & male_data <= male_upper_bound]
+
+
+
+
+
+female_Q1 <- quantile(female_data, 0.25)
+female_Q3 <- quantile(female_data, 0.75)
+female_IRQ <- female_Q3 - female_Q1
+female_lower_bound <- female_Q1 - 1.5*female_IRQ
+female_upper_bound <- female_Q3 + 1.5*female_IRQ
+
+female_data <- female_data[female_data >= female_lower_bound & female_data <= female_upper_bound]
+
+par(mfrow = c(1, 2))
 
 hist(male_data)
-
 hist(female_data)
-par(mfrow=c(1,1))
+
+par(mfrow = c(1, 1))
 
 ```
 
-S histograma je jasno da podatci nisu normalni stoga na njih u ovakvom obliku nećemo moći primjeniti parametarske testove koji pretpostavljaju normalnost populacije.
-
-To potvrđuju i Q-Q plotovi ovih uzoraka. 
+Iz histograma vidimo da podatci nisu normalni no za dovoljno velik broj podataka t-test je robustan stoga koristeći Q-Q plot pogledajmo koliko su daleko ove distribucije od normalne.
 
 ```{r}
-par(mfrow=c(1,2))
 
-qqplot(male_data,rnorm(male_data), main="Q-Q plot podataka za mušku populaciju")
-qqline(rnorm(male_data), col="red", lwd=2)
+par(mfrow = c(1, 2))
+qqnorm(male_data, main = "Male Q-Q plot")
+qqline(male_data, col="red", lwd = 2)
 
-qqplot(female_data,rnorm(female_data), main="Q-Q plot podataka za žensku populaciju")
-qqline(rnorm(female_data), col="red", lwd=2)
-
-par(mfrow=c(1,1))
-
+qqnorm(female_data, main = "Male Q-Q plot")
+qqline(female_data, col="red", lwd = 2)
+par(mfrow = c(1, 1))
 
 ```
 
-Q-Q plotovi definitivno potvrđuju da podatci nijednog od uzoraka nisu normalni.
+Iz qq plotova vidimo da su podatci  blizu normalnima. Budući da je t-test robustan, tj. podnosi rad s distribucijama koje su skoro normalne on je prikladan u ovoj situaciji. Međutim prije primjene t-testa korisno je provjeriti jesu li devijacije dviju populacija jednake kako bismo mogli primjeniti jaču inačicu t-testa. U tu svrhu koristiti ćemo F-test. 
+```{r}
+var.test(male_data, female_data)
 
-S obzirom da podatci nisu normalni, prvo ćemo se poslužiti nekim neparametarskim postupkom. Nakon toga pokušati ćemo izmijeniti uzorke (izbacivanjem ekstrema) i pokušati primjeniti neki parametarski postupak. Idealno bi bilo koristiti Kolmogorov-Smirnovljev test, međutim zbog diskretnosti podataka on nije prikladan, iako bi on izravno dao odgovor na postavljeno pitanje. Umjesto toga upotrijebit Mann-Whitney U test koji će nam reći postoji li statistički zančajna razlika u medijanima dviju distribucija sličnog oblika. Budući da iz histograma vidimo da su distribucije sličnog oblika on U test je ovdje prikladan. Dodatno normalizacijom podataka možemo vidjeti da su histogrami sličniji ako standardiziramo podatke, što će smanjiti vjerojatnost pogreške
-
-``` {r}
-par(mfrow=c(1,2))
-hist(scale(male_data))
-hist(scale(female_data))
-par(mfrow=c(1,1))
 ```
 
-Konačno provedimo test
+Budući da je H0 f testa da su varijance jednake i uz podatak da je p vrijednost jednaka 0.912 možemo koristit t-test s pretpostavkom nepoznatih ali jednakih varijanci.
 
 ```{r}
-wilcox.test(scale(male_data), scale(female_data))
+t.test(male_data, female_data, var.equal = TRUE)
+
 ```
 
-Iz p vrijednosti 0.406 možemo zaključiti da ne postoji statistički značajna razlika u završnim ocjenama iz matematike između splova. Zanimljivo je međutim uočiti da U test nad ne standardiziranim podatcima daje drugačije rezultate.
-
-```{r}
-wilcox.test(male_data, female_data)
-```
-
-S ovom novom p vrijednosti zaključili bismo da postoji značaja razlika u ocjenama. No budući da je oblik distribucije sličniji za normalizirane podatke to je rezultat kojeg odabiremo.
-
-
+Iz p vrijednosti od 0.0185 zaključujemo da na razini značajnosti 95% odbacujemo H0 u korist alternativne hipoteze. Stoga postoji razlika u prosjeku ocjena na završnom ispitu iz matematike između muških i ženskih učenika.
