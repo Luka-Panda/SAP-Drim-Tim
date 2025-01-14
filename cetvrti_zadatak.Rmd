@@ -1,0 +1,100 @@
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+```
+
+
+Postoji li razlika u broju izostanaka iz matematike između učenika koji dolaze iz manjih i većih obitelji?
+
+```{r}
+data <- read.csv("student_data.csv")
+d4 <- data[c('famsize', 'absences_mat')]
+
+print("Sažetak 5 brojeva za absences_mat")
+print(summary(d4$absences_mat))
+
+d4_GT3 <- d4[d4$famsize == 'GT3',c('absences_mat')]  # 266 primjera == veća obitelj
+d4_LE3 <- d4[d4$famsize == 'LE3', c('absences_mat')]  # 104 primjera == manja obitelj
+```
+```{r}
+boxplot(d4_GT3, d4_LE3, 
+        names = c('Učenik iz veće obitelji','Učenik iz manje obitelji'),
+        main='Boxplot - prosječan broj izostanaka za učenike iz većih i manjih obitelji')
+```
+
+
+```{r}
+# izbacujem outliere
+
+granica_GT3 <- 1.5*IQR(d4_GT3)+quantile(d4_GT3, 0.75)
+granica_LE3 <- 1.5*IQR(d4_LE3)+quantile(d4_LE3, 0.75)
+
+d4_GT3 <- d4_GT3[d4_GT3 < granica_GT3]
+d4_LE3 <- d4_LE3[d4_LE3 < granica_LE3]
+
+boxplot(d4_GT3, d4_LE3, names = c('Učenik iz veće obitelji','Učenik iz manje obitelji'))
+```
+
+
+```{r}
+hist((d4_GT3), breaks = 9)
+hist((d4_LE3), breaks = 7)
+
+# varijable nisu normalno distribuirane (dominiraju studenti s malo izostanaka)
+# length(d4_GT3[d4_GT3 <= 5]) # 177 / 243
+# length(d4_LE3[d4_LE3 <= 5]) # 60 / 101
+
+```
+```{r}
+
+```
+
+
+
+
+```{r}
+qqnorm(d4_GT3, pch = 1, frame = FALSE,main='GT3')
+qqline(d4_GT3, col = "steelblue", lwd = 2)
+
+qqnorm(d4_LE3, pch = 1, frame = FALSE,main='LE3')
+qqline(d4_LE3, col = "steelblue", lwd = 2)
+```
+
+Budući da varijable nisu normalno distribuirane, koristit' ću neparametarske testove. Za provjeru razlike u izostancima učenika iz manjih i većih obitelji koristit ću MWW test. On pretpostavlja da su varijable nezavisne, pa moram i to provjeriti.
+
+Međutim, veličina uzorka nije jednaka (243 - 101).
+
+```{r}
+cor.test(d4_GT3, d4_LE3)
+```
+
+Iz tog razloga ću napraviti "oversampling" i ponovno uzorkovati uzorak za učenike iz manjih obitelji tako da bude jednake duljine kao i uzorak za učenike iz većih obitelji
+
+
+```{r}
+d4_LE3_extended <- sample(d4_LE3, 243, replace = TRUE)
+hist((d4_LE3_extended), breaks = 9)
+```
+
+
+```{r}
+cor.test(d4_GT3, d4_LE3_extended)
+```
+
+Nulta hipoteza je da **nema korelacije između dva skupa**. Kako je p-vrijednost 0.27, ne mogu odbaciti ovu hipotezu, tj. sada znam da su ove varijable nezavisne. 
+
+Sada kada sam potvrdio nezavisnost mogu provesti MWW. 
+
+```{r}
+wilcox.test(d4_GT3, d4_LE3_extended, alternative = "two.sided")
+```
+
+Nulta hipoteza jest da nema razlike između broja izostanaka učenika iz većih i manjih obitelji. Budući da je dobivena p-vrijednost vrlo mala, odbacujem tu hipotezu i potvrđujem da zaista postoji razlika.
+
+
+
+
+
+
