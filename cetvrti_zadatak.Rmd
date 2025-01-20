@@ -1,3 +1,8 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
 
 ```{r}
 library(tidyverse)
@@ -5,8 +10,9 @@ library(dplyr)
 library(ggplot2)
 ```
 
+Četvrto istraživačko pitanje koje proučavamo glasi: "Postoji li razlika u broju izostanaka iz matematike između učenika koji dolaze iz manjih i većih obitelji"?
 
-Postoji li razlika u broju izostanaka iz matematike između učenika koji dolaze iz manjih i većih obitelji?
+Na početku koristeći deskriptivnu statistiku i analizu pokušavamo dobiti početni uvid u podatke - provjeravamo veličine uzoraka, distribucije, stršeće vrijednosti itd.
 
 ```{r}
 data <- read.csv("student_data.csv")
@@ -18,24 +24,38 @@ print(summary(d4$absences_mat))
 d4_GT3 <- d4[d4$famsize == 'GT3',c('absences_mat')]  # 266 primjera == veća obitelj
 d4_LE3 <- d4[d4$famsize == 'LE3', c('absences_mat')]  # 104 primjera == manja obitelj
 ```
-```{r}
-boxplot(d4_GT3, d4_LE3, 
-        names = c('Učenik iz veće obitelji','Učenik iz manje obitelji'),
-        main='Boxplot - prosječan broj izostanaka za učenike iz većih i manjih obitelji')
-```
+Stvorili smo dva odvojena uzorka: **d4_GT3** je uzorak izostanaka učenika iz većih obitelji, a **d4_LE3** učenika iz manjih obitelji. Uočavamo neravnomjernu raspodjelu - više od 70% učenika dolazi iz većih obitelji. 
+Gledajući sažetak 5 brojeva vidimo da 75% svih učenika ima do 8 izostanaka. 
 
+Odmah ćemo izbaciti sve stršeće vrijednosti pa provjeriti sažetak 5 brojeva na odvojenim uzorcima.
 
 ```{r}
 # izbacujem outliere
 
-granica_GT3 <- 1.5*IQR(d4_GT3)+quantile(d4_GT3, 0.75)
-granica_LE3 <- 1.5*IQR(d4_LE3)+quantile(d4_LE3, 0.75)
+granica_GT3 <- 1.5*IQR(d4_GT3)+quantile(d4_GT3, 0.75)  # granica = 16.875 ~ 17
+granica_LE3 <- 1.5*IQR(d4_LE3)+quantile(d4_LE3, 0.75)  # granica = 19.5 ~ 20
 
-d4_GT3 <- d4_GT3[d4_GT3 < granica_GT3]
-d4_LE3 <- d4_LE3[d4_LE3 < granica_LE3]
+d4_GT3 <- d4_GT3[d4_GT3 < round(granica_GT3)]
+d4_LE3 <- d4_LE3[d4_LE3 < round(granica_LE3)]
 
-boxplot(d4_GT3, d4_LE3, names = c('Učenik iz veće obitelji','Učenik iz manje obitelji'))
+# granica_GT3
+# granica_LE3
+# length(d4_GT3[d4_GT3 > granica_GT3]) - 14 outlier-a
+# length(d4_LE3[d4_LE3 > granica_LE3]) - 3 outlier-a
 ```
+
+```{r}
+boxplot(d4_GT3, d4_LE3, 
+        names = c('Učenik iz veće obitelji','Učenik iz manje obitelji'),
+        main='Boxplot - prosječan broj izostanaka za učenike iz većih i manjih obitelji')
+
+print("Sažetak 5 brojeva za absences_mat - veće obitelji")
+print(summary(d4_GT3))
+
+print("Sažetak 5 brojeva za absences_mat - manje obitelji")
+print(summary(d4_LE3))
+```
+Nakon odbacivanja stršećih vrijednosti, vidimo da je srednja vrijednost izostanaka veća kod učenika iz manjih obitelji. Značajnost ove razlike provjerit ćemo statističkim testom.
 
 
 ```{r}
@@ -43,16 +63,9 @@ hist((d4_GT3), breaks = 9)
 hist((d4_LE3), breaks = 7)
 
 # varijable nisu normalno distribuirane (dominiraju studenti s malo izostanaka)
-# length(d4_GT3[d4_GT3 <= 5]) # 177 / 243
+# length(d4_GT3[d4_GT3 <= 5]) # 177 / 252
 # length(d4_LE3[d4_LE3 <= 5]) # 60 / 101
-
 ```
-```{r}
-
-```
-
-
-
 
 ```{r}
 qqnorm(d4_GT3, pch = 1, frame = FALSE,main='GT3')
@@ -61,40 +74,25 @@ qqline(d4_GT3, col = "steelblue", lwd = 2)
 qqnorm(d4_LE3, pch = 1, frame = FALSE,main='LE3')
 qqline(d4_LE3, col = "steelblue", lwd = 2)
 ```
-
-Budući da varijable nisu normalno distribuirane, koristit' ću neparametarske testove. Za provjeru razlike u izostancima učenika iz manjih i većih obitelji koristit ću MWW test. On pretpostavlja da su varijable nezavisne, pa moram i to provjeriti.
-
-Međutim, veličina uzorka nije jednaka (243 - 101).
+Iz histograma i QQ-plotova vidimo da nemamo normalnu distribuciju. Razlog tome je što velik broj učenika nije imalo niti jedan izostanak. Možemo pokušati napraviti log-transformaciju da dobijemo nešto što je bliže normalnoj distribuciji, no nećemo dobiti ništa bolje.
 
 ```{r}
-cor.test(d4_GT3, d4_LE3)
+d4_GT3_log <- log(d4_GT3)
+d4_LE3_log <- log(d4_LE3)
+
+hist(d4_GT3_log, breaks = 9)
 ```
 
-Iz tog razloga ću napraviti "oversampling" i ponovno uzorkovati uzorak za učenike iz manjih obitelji tako da bude jednake duljine kao i uzorak za učenike iz većih obitelji
+Kako nam ključna pretpostavka t-testa nije zadovoljena, moramo pribjeći neparametarskim postupcima. Neparametarski testovi ne pretpostavljaju distribuciju, pa možemo koristiti podatke kojima raspolažemo bez transformacija.  
 
+Neparametarska alternativa t-testa jest Mann-Whitney U-test. Test se radi uz pretpostavke da su uzorci iz istih distribucija (što smo vidjeli na histogramu) te da su uzorci nezavisni (što je odrađeno dizajnom eksperimenta).
+
+Nulta hipoteza jest da nema razlike između broja izostanaka učenika iz većih i manjih obitelji. Alternativna hipoteza jest da učenici iz većih obitelji imaju manji broj izostanaka (na što je upućivala srednja vrijednost uzoraka).
 
 ```{r}
-d4_LE3_extended <- sample(d4_LE3, 243, replace = TRUE)
-hist((d4_LE3_extended), breaks = 9)
+wilcox.test(d4_GT3, d4_LE3, alternative ="less")
 ```
 
-
-```{r}
-cor.test(d4_GT3, d4_LE3_extended)
-```
-
-Nulta hipoteza je da **nema korelacije između dva skupa**. Kako je p-vrijednost 0.27, ne mogu odbaciti ovu hipotezu, tj. sada znam da su ove varijable nezavisne. 
-
-Sada kada sam potvrdio nezavisnost mogu provesti MWW. 
-
-```{r}
-wilcox.test(d4_GT3, d4_LE3_extended, alternative = "two.sided")
-```
-
-Nulta hipoteza jest da nema razlike između broja izostanaka učenika iz većih i manjih obitelji. Budući da je dobivena p-vrijednost vrlo mala, odbacujem tu hipotezu i potvrđujem da zaista postoji razlika.
-
-
-
-
+Budući da je dobivena p-vrijednost manja od 0.05, vidimo da je razlika u srednjim vrijednostima statistički značajna, pa možemo odbaciti nultu hipotezu u korist hipoteze da učenici iz većih obitelji imaju manji broj izostanaka.
 
 
