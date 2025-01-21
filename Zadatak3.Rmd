@@ -1,0 +1,189 @@
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Možemo li predvidjeti prolaz iz završnog ispita iz jezika na temelju sociodemografskih varijabli poput spola, obrazovanja roditelja i veličine obitelji?
+
+```{r}
+library(ggplot2)
+```
+
+```{r}
+dataframe <- read.csv('student_data.csv')
+```
+
+
+Ispisujemo podatke i grafove o završnim ocjenama iz portugalskog jezika kako bismo se upoznali s podacima te vidjeli što otprilike možemo očekivati.
+```{r}
+print("Podaci za završnu ocjenu iz portugalskog jezika")
+summary(dataframe$G3_por)
+```
+
+```{r}
+table(dataframe$G3_por)
+```
+
+```{r}
+hist(dataframe$G3_por, 
+     main = "Histogram broja bodova iz portugalskog jezika",
+     xlab = "Broj bodova",
+     ylab = "Broj učenika",
+     breaks=seq(-1, 20, by=1),
+     xaxt = "n")
+axis(1, at=seq(-1, 19, by=1), labels=seq(0, 20, by=1), cex.axis=0.8)
+```
+
+
+```{r}
+boxplot(dataframe$G3_por,
+        main = "Boxplot broja bodova iz portugalskog jezika",
+        ylab = "Broj bodova")
+```
+Budući da će nam za analizu trebati samo podatak je li osoba prošla ili pala, a granica iznosi 10 bodova, vidimo da ćemo imati puno više primjera za prolaz nego pad.
+
+S obzirom na to da trebamo predvidjeti nešto što ima dvije mogućnosti, koristit ćemo logističku regresiju, koja je pogodna za modeliranje binarnih ishoda.
+
+Pretvaramo binarne kategorijske varijable u faktore koji su pogodni za rad s logističkom regresijom.
+
+```{r}
+dataframe$sex <- factor(dataframe$sex, levels = c("M", "F"))
+dataframe$famsize <- factor(dataframe$famsize, levels = c("LE3", "GT3"))
+```
+
+
+Prije same provedbe metode provjerit ćemo kakva je distribucija bodova u odnosu prema sociodemografskim značajkama čiji utjecaj želimo testirati.
+
+```{r}
+boxplot(G3_por ~ sex, 
+        data = dataframe,
+        main = "Distribucija bodova iz portugalskog jezika prema spolu",
+        xlab = "Spol",
+        ylab = "Broj bodova",
+        col = c("blue", "pink"),
+        names = c("M", "F"))
+```
+
+```{r}
+boxplot(G3_por ~ famsize, 
+        data = dataframe,
+        main = "Distribucija bodova iz portugalskog jezika prema veličini obitelji",
+        xlab = "Veličina obitelji",
+        ylab = "Broj bodova",
+        col = c("Red", "Green"),
+        names = c("3 ili manje članova obitelji", "Više od 3 člana obitelji"))
+```
+
+
+```{r}
+
+education_labels <- c("0" = "None", "1" = "Primary education", "2" = "5th to 9th grade", "3" = "Secondary education", "4" = "Higher education")
+
+ggplot(dataframe, aes(x = G3_por)) +
+  geom_histogram(binwidth = 1, fill = "pink", color = "black") +
+  facet_wrap(~ Medu, labeller = as_labeller(education_labels)) +
+  labs(title = "Distribucija broja bodova prema majčinoj edukaciji",
+       x = "Broj bodova",
+       y = "Broj studenata")
+```
+
+```{r}
+ggplot(dataframe, aes(x = G3_por)) +
+  geom_histogram(binwidth = 1, fill = "blue", color = "black") +
+  facet_wrap(~ Fedu, labeller = as_labeller(education_labels)) +
+  labs(title = "Distribucija broja bodova prema očevoj edukaciji",
+       x = "Broj bodova",
+       y = "Broj studenata")
+```
+Na prvu se čini da će spol biti dobar indikator ishoda, jer žene u prosjeku ostvaruju više bodova od muškaraca. Za ostale značajke postoje neke razlike, ali manje nego kod spola, pa je manje vjerojatno da će one biti statistički značajne.
+
+Kako bismo mogli raditi logističku regresiju, pretvaramo broj bodova u novu, binarnu varijablu koja predstavlja prolaz i pad. Nakon toga varijablu pretvaramo u faktore koji su pogodni za rad s logističkom regresijom.
+
+```{r}
+dataframe$G3_por_bin <- NA
+
+for (i in 1:nrow(dataframe)) {
+  if (dataframe$G3_por[i] < 10) {
+    dataframe$G3_por_bin[i] <- "pad"
+  } else {
+    dataframe$G3_por_bin[i] <- "prolaz"
+  }
+}
+
+dataframe$G3_por_bin <- factor(dataframe$G3_por_bin, levels = c("pad", "prolaz"))
+```
+
+
+Nakon toga, možemo provjeriti kakvi su nam podaci i koliki imamo udio svakog od dvaju ishoda.
+```{r}
+table(dataframe$G3_por_bin)
+```
+```{r}
+counts_G3_por_bin <- table(dataframe$G3_por_bin)
+
+# Izračun postotaka
+percentages_G3_por_bin <- round(100 * prop.table(counts_G3_por_bin), 2)
+
+labels_G3_por_bin <- paste(percentages_G3_por_bin, "%")
+pie(table(dataframe$G3_por_bin),
+    labels = labels_G3_por_bin,
+    main = "Udio kategorija binarne varijable", 
+    col = c("red", "green"))
+
+legend("topright", 
+       legend = c("Pad", "Prolaz"),
+       fill = c("red", "green"))
+```
+Vidimo da imamo puno više primjera za prolaz nego za pad, što bi možda moglo uzrokovati problem prilikom modeliranja. No, krenimo s provedbom logističke regresije.
+```{r}
+logreg.mdl <- glm(G3_por_bin ~ sex + famsize + Medu + Fedu, 
+                      data = dataframe, 
+                      family = binomial)
+
+# Ispis rezultata modela
+summary(logreg.mdl)
+Rsq = 1 - logreg.mdl$deviance/logreg.mdl$null.deviance
+print(paste("R^2 =", Rsq))
+```
+Vidimo da je ženski spol pozitivno koreliran s prolazom, i to s velikom razinom značajnosti ( < 0.001). Za ostale značajke postoje naznake pozitivne korelacije između prolaza i manjeg broja članova obitelji te prolaza i bolje edukacije roditelja, ali s obzirom na dosta veći Pr(>|z|) i dosta manji z value, to ima puno manju statističku značajnost.
+```{r}
+counts_sex <- table(dataframe$sex, dataframe$G3_por_bin)
+
+barplot(counts_sex,
+        beside = TRUE, # za grupiranje
+        col = c("blue", "pink"),
+        legend.text = TRUE,
+        args.legend = list(x = "topleft",
+                           cex = 0.8),
+        main = "Ovisnost spola i uspjeha",
+        xlab = "Uspjeh",
+        ylab = "Broj studenata")
+```
+Ako pogledamo grafički odnos spola i uspjeha, jasno je da žene generalno bolje prolaze, ali potencijalni problem stvara što ima jako malo primjera s padovima, a posebice sa ženskim padovima. Promotrimo matricu zabine te metrike ovog modela:
+```{r}
+yHat <- logreg.mdl$fitted.values >= 0.85
+
+tab <- table(dataframe$G3_por_bin, yHat)
+
+tab
+accuracy = sum(diag(tab)) / sum(tab)
+precision = tab[2,2] / sum(tab[,2])
+recall = tab[2,2] / sum(tab[2,])
+specificity = tab[1,1] / sum(tab[,1])
+
+print(paste("Točnost:", accuracy))
+print(paste("Preciznost:", precision))
+print(paste("Odziv:", recall))
+print(paste("Specifičnost:", specificity))
+```
+Vidimo da su točnost, preciznost i odziv prilično visoki, ali je specifičnost niska, što znači da model loše prepoznaje padove, odnosno sklon je lažno pozitivnim primjerima.
+Provedimo stoga i Fisherov test, koji je robustan na male uzorke.
+H0: Ne postoji korelacija između spola i uspjeha na ispitu
+H1: Postoji korelacija između spola i uspjeha na ispitu
+
+```{r}
+table(dataframe$G3_por_bin, dataframe$sex)
+fisher.test(table(dataframe$G3_por_bin, dataframe$sex))
+```
+Budući da je p-vrijednost < 0.05, odbacujemo H0 u korist H1.
+
+Zaključujemo da su ženski spol i učestalost prolaza povezani, te da se prolaz može predvidjeti na osnovu spola, dok se na osnovu obrazovanja roditelja i veličine obitelji ne može predvidjeti prolaz.
