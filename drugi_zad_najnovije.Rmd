@@ -1,0 +1,121 @@
+---
+title: "drugi_zadatak"
+author: "Luka"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(nortest)
+```
+
+# 3.2. Postoji li razlika u prvoj ocjeni iz matematike s obzirom na mjesto stanovanja učenika?
+
+## Pregled podataka
+
+Prije samog odgovora na postavljeno pitanje, provjerimo prvo podatkovni skup te koje bi nam značajke bile važne za pronalazak odgovora.
+
+```{r}
+student_data <- read.csv('student_data.csv')
+head(student_data, 3)
+```
+
+U skupu podataka možemo vidjeti da 'G1_mat' varijabla predstavlja prvu ocjenu iz matematike (cjelobrojna vrijednost u rasponu od 0 - 20), te pomoću 'address' varijable doznajemo studentovo mjesto stanovanja (U - urban/grad, R - rural/selo). Te ćemo varijable izdvojiti iz skupa podataka za daljnju statističku analizu i testiranja.
+
+```{r}
+columns <- c('G1_mat', 'address')
+grades <- student_data[columns]
+```
+
+## Vizualizacija
+
+Sada ćemo iskoristiti metodu vizualizacije da provjerimo ovisnost prve ocjene iz matematike s obzirom na mjesto stanovanja pomoću box plot-a.
+
+```{r}
+grades$address <- factor(grades$address)
+
+plot(G1_mat ~ address, grades)
+```
+
+Uz pomoć našeg box plot-a ne možemo dobiti empirijski odgovor na postavljeno pitanje, no možemo očekivati da neće biti razlike u prvoj ocjeni iz matematike s obzirom na mjesto stanovanja. Kako bismo to statistički zaključili, moramo provesti neki od testova za usporedbu sredina uzoraka poput t testa, za čije izvođenje uzimamo pretpostavku normalnosti podataka.
+
+Provjerimo normalnost podataka koristeći histograme i qq plotove.
+
+```{r}
+rural_scores = subset(grades, address == 'R')$G1_mat
+urban_scores = subset(grades, address == 'U')$G1_mat
+```
+
+```{r}
+hist(rural_scores, breaks=seq(0, 20, by=1), xaxt = "n", main='Broj bodova na prvom ispitu iz matematike za studente iz ruralnih podrucja', xlab='Ocjena', ylab='Broj pojavljivanja')
+axis(1, at=seq(0, 20, by=1), labels=seq(0, 20, by=1), cex.axis=0.8)
+
+hist(urban_scores, breaks=seq(0, 20, by=1), xaxt = "n", main='Broj bodova na prvom ispitu iz matematike za studente iz urbanih podrucja', xlab='Ocjena', ylab='Broj pojavljivanja')
+axis(1, at=seq(0, 20, by=1), labels=seq(0, 20, by=1), cex.axis=0.8)
+```
+
+```{r}
+qqnorm(rural_scores, pch = 1, frame = FALSE,main='Bodovi za učenike iz ruralnih područja')
+qqline(rural_scores, col = "steelblue", lwd = 2)
+
+qqnorm(urban_scores, pch = 1, frame = FALSE,main='Bodovi za učenike iz urbanih područja')
+qqline(urban_scores, col = "steelblue", lwd = 2)
+```
+
+Dobivene p-vrijednosti su manje od vrijednosti odbacivanja alpha=0.05, no uzimajući u obzir vrijednosti ...
+
+Pretpostavke ANOVA-e su:
+
+- nezavisnost pojedinih podataka u uzorcima,
+- normalna razdioba podataka,
+- homogenost varijanci među populacijama. 
+
+Kad su veličine grupa podjednake, ANOVA je relativno robusna metoda na blaga odstupanja od pretpostavke normalnosti i homogenosti varijanci. Ipak, dobro je provjeriti koliko su ta odstupanja velika. 
+
+Provjera normalnosti može se za svaku pojedinu grupu napraviti KS testom ili Lillieforsovom inačicom KS testa.
+
+H0: podaci su normalno distribuirani  
+H1: podaci nisu normalno distribuirani  
+alpha = 0.05  
+
+```{r}
+lillie.test(rural_scores)
+lillie.test(urban_scores)
+```
+
+Što se tiče homogenosti varijanci različitih populacija, potrebno je testirati:
+$$ \begin{aligned}
+  H_0 & : \sigma_1^2 = \sigma_2^2 = \ldots = \sigma_k^2 \\
+  H_1 & : \text{barem dvije varijance nisu iste}.
+\end{aligned} $$
+Navedenu hipotezu možemo testirati Bartlettovim testom. Bartlettov test u R-u implementiran je naredbom `bartlett.test()`.
+
+```{r}
+
+# Testiranje homogenosti varijance uzoraka Bartlettovim testom
+
+bartlett.test(G1_mat ~ address, grades)
+```
+Varijance su homogene što nam omogućuje provođenje Anove.
+
+```{r}
+# Test
+a = aov(G1_mat ~ address, grades)
+summary(a)
+```
+
+p-vrijednost je 0.186 -> ne možemo odbaciti H0
+
+izbacit posli:
+
+t-test
+
+```{r}
+t.test(rural_scores, urban_scores, var.equal = TRUE)
+```
+
+p-vrijednost je 0.1139 -> ne možemo odbaciti H0
+
+Zaključujemo da ne postoji razlika u prvoj ocjeni iz matematike s obzirom na mjesto stanovanja učenika.
