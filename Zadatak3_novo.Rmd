@@ -1,0 +1,193 @@
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Možemo li predvidjeti prolaz iz završnog ispita iz jezika na temelju sociodemografskih varijabli poput spola, obrazovanja roditelja i veličine obitelji?
+
+```{r}
+library(ggplot2)
+library(car)
+```
+
+```{r}
+dataframe <- read.csv('student_data.csv')
+```
+
+Ispisujemo podatke u tabličnom obliku o završnim ocjenama iz portugalskog jezika kako bismo se upoznali s podacima te vidjeli što otprilike možemo očekivati. Gornji redak predstavlja broj bodova koji je učenik skupio, a donji redak predstavlja koliko je takvih učenika.
+```{r}
+table(dataframe$G3_por)
+```
+Budući da će nam za analizu trebati samo podatak je li osoba prošla ili pala, a granica prolaza iznosi 10 bodova, vidimo da ćemo imati puno više primjera za prolaz nego pad.
+S obzirom na to da trebamo predvidjeti nešto što ima dvije mogućnosti, koristit ćemo logističku regresiju, koja je pogodna za modeliranje binarnih ishoda.
+Prije same analize, provjerit ćemo kakva je distribucija bodova u odnosu prema sociodemografskim značajkama čiji utjecaj želimo testirati.
+
+```{r}
+boxplot(G3_por ~ famsize, 
+        data = dataframe,
+        main = "Distribucija bodova iz portugalskog jezika prema veličini obitelji",
+        xlab = "Veličina obitelji",
+        ylab = "Broj bodova",
+        col = c("Red", "Green"),
+        names = c("3 ili manje članova obitelji", "Više od 3 člana obitelji"))
+```
+```{r}
+education_labels <- c("0" = "None", "1" = "Primary education", "2" = "5th to 9th grade", "3" = "Secondary education", "4" = "Higher education")
+
+ggplot(dataframe, aes(x = G3_por)) +
+  geom_histogram(binwidth = 1, fill = "pink", color = "black") +
+  facet_wrap(~ Medu, labeller = as_labeller(education_labels)) +
+  labs(title = "Distribucija broja bodova prema majčinoj edukaciji",
+       x = "Broj bodova",
+       y = "Broj studenata")
+```
+```{r}
+ggplot(dataframe, aes(x = G3_por)) +
+  geom_histogram(binwidth = 1, fill = "blue", color = "black") +
+  facet_wrap(~ Fedu, labeller = as_labeller(education_labels)) +
+  labs(title = "Distribucija broja bodova prema očevoj edukaciji",
+       x = "Broj bodova",
+       y = "Broj studenata")
+```
+Na prvu se čini da bi spol mogao biti dobar indikator prolaza, jer žene u prosjeku prolaze bolje nego muškarci.
+Vidimo da kod 0. kategorije za majčinu edukaciju imamo samo 3 primjera, a za očevu samo 2, što bi moglo stvarati problem (veliki std. Error za te značajke) pri izvođenju logističke regresije. Zbog toga ćemo nultu kategoriju izbaciti prilikom pretvaranja u faktore te ju nećemo uključiti u analizu.
+Kategorijske varijable pretvaramo u faktore koji su pogodni za rad s logističkom regresijom.
+```{r}
+dataframe$sex <- factor(dataframe$sex)
+dataframe$famsize <- factor(dataframe$famsize)
+dataframe <- dataframe[dataframe$Medu != 0,]
+dataframe <- dataframe[dataframe$Fedu != 0,]
+dataframe$Medu <- factor(dataframe$Medu)
+dataframe$Fedu <- factor(dataframe$Fedu)
+```
+Kako bismo mogli raditi logističku regresiju, pretvaramo broj bodova u novu, binarnu varijablu koja predstavlja prolaz i pad. Nakon toga varijablu pretvaramo u faktore.
+
+```{r}
+dataframe$G3_por_bin <- NA
+for (i in 1:nrow(dataframe)) {
+  if (dataframe$G3_por[i] < 10) {
+    dataframe$G3_por_bin[i] <- "pad"
+  } else {
+    dataframe$G3_por_bin[i] <- "prolaz"
+  }
+}
+dataframe$G3_por_bin <- factor(dataframe$G3_por_bin, levels = c("pad", "prolaz"))
+```
+Krenimo sada provođenjem logističke regresije:
+```{r}
+logreg.mdl <- glm(G3_por_bin ~ sex + famsize + Medu + Fedu, 
+                      data = dataframe, 
+                      family = binomial)
+
+summary(logreg.mdl)
+Rsq = 1 - logreg.mdl$deviance/logreg.mdl$null.deviance
+print(paste("R^2 =", Rsq))
+yHat <- logreg.mdl$fitted.values >= 0.5
+
+tab <- table(dataframe$G3_por_bin, yHat)
+
+tab
+accuracy = sum(diag(tab)) / sum(tab)
+precision = tab[2,2] / sum(tab[,2])
+recall = tab[2,2] / sum(tab[2,])
+specificity = tab[1,1] / sum(tab[,1])
+
+print(paste("Točnost:", accuracy))
+print(paste("Preciznost:", precision))
+print(paste("Odziv:", recall))
+print(paste("Specifičnost:", specificity))
+```
+Vidimo da je muški spol negativno koreliran s prolazom, i to s velikom razinom značajnosti (čak i za alpha = 0.001). Za očevu razinu edukacije imamo statistički značajnu korelaciju, na razini alpha = 0.05. Kao i u ostalim pitanjima, za razinu značajnosti postavit ćemo alpha = 0.05 te ove značajke s alphom iznad toga nećemo uzimati u obzir. Pokušajmo prvo razjasniti što se događa kod očeve edukacije te na koji način pristupiti analizi te značajke.
+`
+```{r}
+counts_Fedu <- table(dataframe$Fedu, dataframe$G3_por_bin)
+barplot(counts_Fedu,
+        beside = TRUE, # za grupiranje
+        legend.text = TRUE,
+        args.legend = list(x = "topleft",
+                           cex = 0.8),
+        main = "Ovisnost očeve edukacije i uspjeha",
+        xlab = "Uspjeh",
+        ylab = "Broj studenata")
+```
+Na prvi pogled vidimo da djeca čiji očevi imaju obrazovanje kategorije 1 najlošije prolaze. U odnosu na nju, model nam je pozitivno koreliranom proglasio kategoriju 2. Stoga ćemo u idućem modelu ovdje kao referentnu postaviti kategoriju 2 te vidjeti kako su, u odnosu na tu kategoriju, ostale kategorije povezane s padom.
+```{r}
+dataframe$Fedu <- factor(dataframe$Fedu, levels = c(2, 1, 3, 4))
+```
+
+Provedimo sada još jednom logističku regresiju sa spolom, očevom edukacijom te ostalim sociodemografskim varijablama u skupu, kako bismo vidjeli ima li još koja sociodemografska varijabla koja je dobro korelirana s prolazom.
+
+```{r}
+dataframe$school <- factor(dataframe$school)
+dataframe$address <- factor(dataframe$address)
+dataframe$Pstatus <- factor(dataframe$Pstatus)
+dataframe$Mjob <- factor(dataframe$Mjob)
+dataframe$Fjob <- factor(dataframe$Fjob)
+dataframe$guardian <- factor(dataframe$guardian)
+
+logreg2.mdl <- glm(G3_por_bin ~ sex + Fedu + school + address + Pstatus + Mjob + Fjob + guardian + age, 
+                      data = dataframe, 
+                      family = binomial)
+
+# Ispis rezultata modela
+summary(logreg2.mdl)
+Rsq2 = 1 - logreg2.mdl$deviance/logreg2.mdl$null.deviance
+print(paste("R^2 =", Rsq2))
+
+yHat2 <- logreg2.mdl$fitted.values >= 0.5
+
+tab2 <- table(dataframe$G3_por_bin, yHat2)
+
+tab2
+accuracy2 = sum(diag(tab2)) / sum(tab2)
+precision2 = tab2[2,2] / sum(tab2[,2])
+recall2 = tab2[2,2] / sum(tab2[2,])
+specificity2 = tab2[1,1] / sum(tab2[,1])
+
+print(paste("Točnost:", accuracy2))
+print(paste("Preciznost:", precision2))
+print(paste("Odziv:", recall2))
+print(paste("Specifičnost:", specificity2))
+```
+Sada vidimo da prolaz pozitivno korelira s činjenicom da je majka zaposlena kao učiteljica na razini značajnosti alpha = 0.05, dok negativno korelira sa školom "Mousinho da Silveira" za alpha = 0.05 i muškim spolom za alpha = 0.001.
+Također vidimo da, nakon što smo promijenili referentne kategorije za očevu edukaciju, više nemamo statistički značajnih korelacija za tu varijablu.
+S većim brojem varijabli, vidimo smanjenje vrijednosti AIC (Akaike Information Criterion), što je indikator da se model poboljšao. Također imamo veći R^2 (0.325 u odnosu na 0.15), što je znak da je model bolje prilagođen podacima te puno bolju specifičnost (0.64 u odnosu na 0.25), što je znak da sada imamo manje lažno pozitivnih primjera.
+
+Vizualizirajmo sada značajke za koje smo dobili statistički značajne korelacije.
+```{r}
+counts_sex <- table(dataframe$sex, dataframe$G3_por_bin)
+barplot(counts_sex,
+        beside = TRUE, # za grupiranje
+        col = c("pink", "blue"),
+        legend.text = TRUE,
+        args.legend = list(x = "topleft",
+                           cex = 0.8),
+        main = "Ovisnost spola i uspjeha",
+        xlab = "Uspjeh",
+        ylab = "Broj studenata")
+```
+```{r}
+counts_school <- table(dataframe$school, dataframe$G3_por_bin)
+barplot(counts_school,
+        beside = TRUE, # za grupiranje
+        legend.text = TRUE,
+        args.legend = list(x = "topleft",
+                           cex = 0.8),
+        main = "Ovisnost škole i uspjeha",
+        xlab = "Uspjeh",
+        ylab = "Broj studenata")
+```
+
+```{r}
+counts_Mjob <- table(dataframe$Mjob, dataframe$G3_por_bin)
+barplot(counts_Mjob,
+        beside = TRUE, # za grupiranje
+        legend.text = TRUE,
+        args.legend = list(x = "topleft",
+                           cex = 0.8),
+        main = "Ovisnost majčinog posla i uspjeha",
+        xlab = "Uspjeh",
+        ylab = "Broj studenata")
+```
+
+Zaključujemo da su ženski spol i prolaz korelirani na visokoj razini značajnosti (alpha = 0.001), dok edukacija roditelja i veličina obitelji nisu dovoljno statistički značajni pokazatelji prolaza ili pada. Od ostalih sociodemografskih varijabli zaključujemo da pohađanje škole "Gabriel Pereira" te majčino zaposlenje kao učiteljice pozitivno koreliraju s prolazom na razini značajnosti alpha = 0.05.
+
