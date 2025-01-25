@@ -1,0 +1,97 @@
+```{r, include=FALSE}
+
+data_frame <- read.csv("student_data.csv", header = TRUE)
+
+male_data <- subset(data_frame, sex == "M")
+
+male_data <- male_data$G3_mat
+  
+  
+female_data <- subset(data_frame, sex == "F")
+female_data <- female_data$G3_mat
+
+```
+
+
+Kako bismo odgovorili na pitanje postoji li razlika u konačnim ocjenama među spolovima, prvo moramo odraditi deskriptivnu statistiku.
+
+Za početak napravimo box plotove za ocjene ovih dvaju populacija.
+
+```{r}
+
+boxplot(male_data, female_data, main="Box plot uzoraka", names = c("Muški podatci", "Ženski podatci"), col = "Light blue", ylab="ocjene")
+
+
+```
+
+Sa boxplota vidimo da postoji mala razlika u medijanima uzoraka. Dodatno zanimljivo je uočiti da za obje populacije boxplot je skoro jednak, samo je jedna od populacija translatirana. Dodatno vidimo da postoje outlieri, sukladno tome eliminirajmo outliere obje populacije, te pogledajmo histograme populacija.
+
+```{r}
+male_Q1 <- quantile(male_data, 0.25)
+male_Q3 <- quantile(male_data, 0.75)
+male_IRQ <- male_Q3 - male_Q1
+male_lower_bound <- male_Q1 - 1.5*male_IRQ
+male_upper_bound <- male_Q3 + 1.5*male_IRQ
+
+male_data <- male_data[male_data >= male_lower_bound & male_data <= male_upper_bound]
+
+
+
+
+
+female_Q1 <- quantile(female_data, 0.25)
+female_Q3 <- quantile(female_data, 0.75)
+female_IRQ <- female_Q3 - female_Q1
+female_lower_bound <- female_Q1 - 1.5*female_IRQ
+female_upper_bound <- female_Q3 + 1.5*female_IRQ
+
+female_data <- female_data[female_data >= female_lower_bound & female_data <= female_upper_bound]
+
+```
+
+```{r}
+
+par(mfrow = c(1, 2))
+
+hist(male_data, breaks = seq(min(male_data), max(male_data), by = 1), ylab="Frekvencija svake ocjene", col="Light blue", xlab = "Muške ocjene",main = "Histogram muškh ocjena")
+
+hist(female_data, breaks = seq(min(female_data), max(female_data), by = 1), ylab="Frekvencija svake ocjene", col="Light blue", xlab = "Ženske ocjene",main = "Histogram ženskih ocjena")
+
+
+
+par(mfrow = c(1, 1))
+
+```
+
+Iz histograma vidimo da podatci nisu normalni, no za dovoljno velik broj podataka t-test je robustan. Stoga, koristeći Q-Q plot, pogledajmo koliko su daleko ove distribucije od normalne.
+
+```{r}
+library(nortest)
+
+par(mfrow = c(1, 2))
+qqnorm(male_data, main = "Q-Q plot muškog uzorka", xlab = "Teoretski kvantili", ylab = "Kvantili iz uzorka")
+qqline(male_data, col="red", lwd = 2)
+
+qqnorm(female_data, main = "Q-Q plot ženskog uzorka", xlab = "Teoretski kvantili", ylab = "Kvantili iz uzorka")
+qqline(female_data, col="red", lwd = 2)
+par(mfrow = c(1, 1))
+
+```
+
+Iz Q-Q plotova vidimo da su podatci blizu normalnima, no nisu normalni. To možemo potvrditi ako provedemo Kolgomorov-Smirnovljev test, odnosno Lillieforcovu inačicu testa, s obzirom na to da nam očekivanje i standardna devijacija populacije nisu poznati.
+
+```{r}
+
+lillie.test(male_data)
+lillie.test(female_data)
+
+```
+
+Nenormalnost podataka nam na prvi pogled onemogućuje primjenu parametarskog testa. Međutim, spašava nas centralni granični teorem. Centralni granični teorem nam kaže da, kako veličina uzorka raste, distribucija uzorkovanja očekivanja se približava normalnoj. Budući da na Q-Q plotovima vidimo da podatci nisu normalni te da imamo preko 150 mjerenja u oba uzorka, pozivajući se na CGT, možemo koristiti t-test. Prije primjene t-testa korisno je provjeriti jesu li devijacije dviju populacija jednake kako bismo mogli primjeniti jaču inačicu t-testa. No, s obzirom na to da su parametarske metode za usporedbu standarnih devijacija vrlo osjetiljive na nenormalnost i da rezultati nisu značajno različiti, s pretpostavkom jednakosti devijacija i bez nje, taj postupak ovdije nećemo provesti. Konačno provedimo t-test.
+
+```{r}
+t.test(male_data, female_data)
+
+```
+
+Iz p-vrijednosti od 0.0185 zaključujemo da na razini značajnosti 95% odbacujemo H0 u korist alternativne hipoteze. Stoga postoji razlika u prosjeku ocjena na završnom ispitu iz matematike između muških i ženskih učenika. Iz predostrožnosti napomenimo da se oslanjamo na CGT, dakle ovi rezultati su aproksimativni te je zaključak možda manje nešto manje značajnosti. 
