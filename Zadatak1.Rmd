@@ -1,4 +1,4 @@
-```{r}
+```{r, include=FALSE}
 
 data_frame <- read.csv("student_data.csv", header = TRUE)
 
@@ -19,12 +19,12 @@ Za početak napravimo box plotove za ocjene ovih dvaju populacija.
 
 ```{r}
 
-boxplot(male_data, female_data, main="Box plot")
+boxplot(male_data, female_data, main="Box plot uzoraka", names = c("Muški podatci", "Ženski podatci"), col = "Light blue", ylab="ocjene")
 
 
 ```
 
-Sa boxplota vidimo da postoji mala razlika u medianima uzoraka. Dodatno zanimljivo je uočiti da za obje populacije boxplot je skoro jednak samo je jedna od populacija translatirana. Dodtano vidimo da postoje outlieri, sukladno tome eliminirajmo outliere obje populacije, te pogledajmo histograme populacija.
+Sa boxplota vidimo da postoji mala razlika u medianima uzoraka. Dodatno zanimljivo je uočiti da za obje populacije boxplot je skoro jednak samo je jedna od populacija translatirana. Dodatano vidimo da postoje outlieri, sukladno tome eliminirajmo outliere obje populacije, te pogledajmo histograme populacija.
 
 ```{r}
 male_Q1 <- quantile(male_data, 0.25)
@@ -47,10 +47,17 @@ female_upper_bound <- female_Q3 + 1.5*female_IRQ
 
 female_data <- female_data[female_data >= female_lower_bound & female_data <= female_upper_bound]
 
+```
+
+```{r}
+
 par(mfrow = c(1, 2))
 
-hist(male_data)
-hist(female_data)
+hist(male_data, breaks = seq(min(male_data), max(male_data), by = 1), ylab="Frekvencija svake ocjene", col="Light blue", xlab = "Muške ocjene",main = "Histogram muškh ocjena")
+
+hist(male_data, breaks = seq(min(male_data), max(male_data), by = 1), ylab="Frekvencija svake ocjene", col="Light blue", xlab = "Ženske ocjene",main = "Histogram ženskih ocjena")
+
+
 
 par(mfrow = c(1, 1))
 
@@ -59,28 +66,32 @@ par(mfrow = c(1, 1))
 Iz histograma vidimo da podatci nisu normalni no za dovoljno velik broj podataka t-test je robustan stoga koristeći Q-Q plot pogledajmo koliko su daleko ove distribucije od normalne.
 
 ```{r}
+library(nortest)
 
 par(mfrow = c(1, 2))
-qqnorm(male_data, main = "Male Q-Q plot")
+qqnorm(male_data, main = "Q-Q plot muškog uzroka", xlab = "Teoretski kvantili", ylab = "Kvantili iz uzorka")
 qqline(male_data, col="red", lwd = 2)
 
-qqnorm(female_data, main = "Male Q-Q plot")
+qqnorm(female_data, main = "Q-Q plot ženskog uzorka", xlab = "Teoretski kvantili", ylab = "Kvantili iz uzorka")
 qqline(female_data, col="red", lwd = 2)
 par(mfrow = c(1, 1))
 
 ```
 
-Iz qq plotova vidimo da su podatci  blizu normalnima. Budući da je t-test robustan, tj. podnosi rad s distribucijama koje su skoro normalne on je prikladan u ovoj situaciji. Međutim prije primjene t-testa korisno je provjeriti jesu li devijacije dviju populacija jednake kako bismo mogli primjeniti jaču inačicu t-testa. U tu svrhu koristiti ćemo F-test. 
+Iz qq plotova vidimo da su podatci  blizu normalnima. No nisu normalni. To možemo potvrditi ako provedemo Kolgomorov-Smirljanov test, specifično potrebna nam je Lillieforcova inčica testa, budući da nam očekivanje i standardna devijacija populacije nisu poznati.
+
 ```{r}
-var.test(male_data, female_data)
+
+lillie.test(male_data)
+lillie.test(female_data)
 
 ```
 
-Budući da je H0 f testa da su varijance jednake i uz podatak da je p vrijednost jednaka 0.912 možemo koristit t-test s pretpostavkom nepoznatih ali jednakih varijanci.
+Ne normalnosti podataka nam na prvi pogled onemogućuje primjenu parametarskog testa. Međutim spašava nas Centralni Granični teorem. Centralni granični teorem nam kaže da kako veličina uzorka raste, distribucija uzorkovanja očekivanja se približava normalnoj. Budući da na Q-Q plotovima vidimo da podatci nisu normalni te da imamo preko 150 mjerenja u oba uzorka, pozivajući se na CGT možemo smijemo koristiti t-test. Prije primjene t-testa korisno je provjeriti jesu li devijacije dviju populacija jednake kako bismo mogli primjeniti jaču inačicu t-testa. No budući da su parametarske metode za usporedbu standarnih devijacija vrlo osjetiljive na ne normalnost i da rezultati nisu značajno različiti, s pretpostavkom jednakosti devijacija i bez nje, taj postupak ovdije nećemo provesti. Konačno provedimo t-test.
 
 ```{r}
-t.test(male_data, female_data, var.equal = TRUE)
+t.test(male_data, female_data)
 
 ```
 
-Iz p vrijednosti od 0.0185 zaključujemo da na razini značajnosti 95% odbacujemo H0 u korist alternativne hipoteze. Stoga postoji razlika u prosjeku ocjena na završnom ispitu iz matematike između muških i ženskih učenika.
+Iz p vrijednosti od 0.0185 zaključujemo da na razini značajnosti 95% odbacujemo H0 u korist alternativne hipoteze. Stoga postoji razlika u prosjeku ocjena na završnom ispitu iz matematike između muških i ženskih učenika. Iz predostrožnosti napomenimo da se oslanjamo na CGT, stoga ovi rezultati su aproksimativni te je zaključak možda manje nešto manje značajnosti. 

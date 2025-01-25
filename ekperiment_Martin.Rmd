@@ -1,0 +1,77 @@
+Evo histograma obe populacija
+Pa onda F test za usporednu devijacija
+Onda q-q plotovi za vidimo normalnost
+I ovi testovi za normalnost koje sam od tebe vidio
+```{r}
+
+data_frame <- read.csv("student_data.csv", header = TRUE)
+
+urban_data <- subset(data_frame, address == "U")
+
+urban_data <- urban_data$G1_mat
+
+
+
+hist(urban_data, breaks = seq(0, 20, by = 1))
+  
+rural_data <- subset(data_frame, address == "R")
+rural_data <- rural_data$G1_mat
+hist(rural_data, breaks = seq(0, 20, by = 1))
+
+boxplot(rural_data, urban_data)
+
+var.test(rural_data,urban_data)
+
+qqnorm(urban_data, main = "urban Q-Q plot")
+qqline(urban_data, col="red", lwd = 2)
+
+qqnorm(rural_data, main = "rural Q-Q plot")
+qqline(rural_data, col="red", lwd = 2)
+
+shapiro.test(rural_data)
+shapiro.test(urban_data)
+
+```
+
+Eliminiramnjem ooutliera dobijemo sljedece rezultate i lillieferova inacica ks testa koja sluzi za procjenu kada ne znamo očekivanje i std distribucije
+
+```{r}
+
+library(nortest)
+
+
+urban_Q1 <- quantile(urban_data, 0.25)
+urban_Q3 <- quantile(urban_data, 0.75)
+urban_IRQ <- urban_Q3 - urban_Q1
+urban_lower_bound <- urban_Q1 - 1.5*urban_IRQ
+urban_upper_bound <- urban_Q3 + 1.5*urban_IRQ
+
+urban_data <- urban_data[urban_data >= urban_lower_bound & urban_data <= urban_upper_bound]
+
+
+rural_Q1 <- quantile(rural_data, 0.25)
+rural_Q3 <- quantile(rural_data, 0.75)
+rural_IRQ <- rural_Q3 - rural_Q1
+rural_lower_bound <- rural_Q1 - 1.5*rural_IRQ
+rural_upper_bound <- rural_Q3 + 1.5*rural_IRQ
+
+rural_data <- rural_data[rural_data >= rural_lower_bound & rural_data <= rural_upper_bound]
+
+
+# Histogram of Unique Values for Urban Data
+unique_values_urban <- sort(unique(urban_data))
+breaks_urban <- c(unique_values_urban - 0.5, max(unique_values_urban) + 0.5)
+hist(urban_data, breaks = breaks_urban, main = "Urban Data: Histogram of Unique Values", xlab = "Grades", col = "skyblue", border = "black")
+
+# Histogram of Unique Values for Rural Data
+unique_values_rural <- sort(unique(rural_data))
+breaks_rural <- c(unique_values_rural - 0.5, max(unique_values_rural) + 0.5)
+hist(rural_data, breaks = breaks_rural, main = "Rural Data: Histogram of Unique Values", xlab = "Grades", col = "palegreen", border = "black")
+
+lillie.test(rural_data)
+lillie.test(urban_data)
+
+print(length(urban_data))
+print(length(rural_data))
+
+```
